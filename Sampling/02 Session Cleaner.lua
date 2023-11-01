@@ -2,7 +2,6 @@
 -- Description : Clear all the regions and the markers those begins with "/".
 -- Version : 1.0
 
-
 -- Split items function
 local function splitItemsAtPosition(position)
     for j = 0, reaper.CountMediaItems(0)-1 do
