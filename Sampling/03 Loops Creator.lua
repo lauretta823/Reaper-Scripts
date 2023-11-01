@@ -2,8 +2,6 @@
 -- Description : Create a seamless loop on each sample. 
 -- Version : 1.0
 
-
-
 -- Get the length of the time selection
 start_time, end_time = reaper.GetSet_LoopTimeRange2(0, false, false, 0, 0, false)
 time_selection_length = end_time - start_time

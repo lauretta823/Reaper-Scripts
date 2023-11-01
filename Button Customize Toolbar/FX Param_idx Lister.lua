@@ -2,9 +2,6 @@
 -- Description : Extract a list of a plugin's parameters and the IDs.
 -- Version : 1.0
 
-
-
-
 -- Function to get user input for track number and part of plugin name
 function GetUserInput()
   local title = "Enter Track and Plugin Info"

@@ -2,8 +2,6 @@
 -- Description : Create regions and a midi track for recording samples.
 -- Version : 1.0
 
-
-
 -- Initialize local variables with default values
 local roundRobinsNumber = 1
 local velocityLayersNumber = 1
