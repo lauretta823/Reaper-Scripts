@@ -2,8 +2,6 @@
 # Function: Renames and moves samples from Reaper export, organizing them so that Kontakt can correctly read them
 # Version: 1.0
 
-
-
 import os
 import shutil
 from collections import defaultdict
