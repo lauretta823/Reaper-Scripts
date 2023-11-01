@@ -1,3 +1,11 @@
+# Name: Reaper_To_DS
+# Function: Create a DecentSampler library from Reaper export samples
+# Version: 1.0
+
+
+
+
+
 import os
 from tkinter import filedialog
 from tkinter import Tk
