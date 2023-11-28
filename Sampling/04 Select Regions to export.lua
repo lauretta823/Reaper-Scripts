@@ -30,8 +30,11 @@ if retval then
             local region_count = reaper.CountProjectMarkers(0)
             for j = 0, region_count - 1 do
                 local retval, isrgn, pos, rgnend, name, markrgnindexnumber = reaper.EnumProjectMarkers3(0, j)
-                if isrgn and not name:find("^/") then  -- Updated the condition to check for regions starting with "/"
+                if isrgn then
+                    local startIndex = name:find("#")
+                    if startIndex ~= 1 then  -- Updated the condition to check for regions starting with "/"
                     reaper.SetRegionRenderMatrix(0, markrgnindexnumber, track, 1)
+                    end
                 end
             end
         end

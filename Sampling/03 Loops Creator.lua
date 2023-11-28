@@ -16,32 +16,9 @@ end
 
 -- Calculate the value of endofloop_to_endofregion
 endofloop_to_endofregion = first_region_end - end_time
+
 function Msg(msg)
     reaper.ShowConsoleMsg(tostring(msg) .. "\n")
-end
-
-function Move_items()
-    first_item = reaper.GetSelectedMediaItem(0,0)
-    if first_item ~= nil then
-        start_looptime, end_looptime = reaper.GetSet_LoopTimeRange2(0, false, false, 0, 0, false )
-        start_first_item = reaper.GetMediaItemInfo_Value(first_item, "D_POSITION")
-        length_first_item = reaper.GetMediaItemInfo_Value(first_item, "D_LENGTH") 
-        count_sel_item =  reaper.CountSelectedMediaItems(0)
-        Msg("Selected Items = "..count_sel_item)
-        
-        selected_items_details = {}
-        for i = 0, count_sel_item - 1 do
-            item = reaper.GetSelectedMediaItem(0, i)
-            local item_position = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
-            local item_length = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
-            
-            table.insert(selected_items_details, {item = item, position = item_position, length = item_length})
-        end
-        for i, item_details in ipairs(selected_items_details) do
-            local new_position = item_details.position + (i-1) * time_selection_length
-            reaper.SetMediaItemInfo_Value(item_details.item, "D_POSITION", new_position)
-        end
-    end
 end
 
 function Move_regions()
@@ -65,6 +42,47 @@ function Move_regions()
         reaper.SetProjectMarker3(0, region.index, true, new_pos, new_end, region.name, 0)
     end
 end
+
+function Move_items()
+    local count_sel_tracks = reaper.CountSelectedTracks(0)
+
+    for t = 0, count_sel_tracks - 1 do
+        local track = reaper.GetSelectedTrack(0, t)
+        local count_track_items = reaper.CountTrackMediaItems(track)
+
+        for i = count_track_items - 1, 0, -1 do
+            local item = reaper.GetTrackMediaItem(track, i)
+            local item_position = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+
+            local increment = (i * time_selection_length)
+            local new_position = item_position + increment
+            reaper.SetMediaItemInfo_Value(item, "D_POSITION", new_position)
+        end
+    end
+end
+
+function Select_Media_On_Selected_Tracks()
+    local num_tracks = reaper.CountTracks(0)
+
+    for t = 0, num_tracks - 1 do
+        local track = reaper.GetTrack(0, t)
+        local track_selected = reaper.IsTrackSelected(track)
+        local num_items = reaper.CountTrackMediaItems(track)
+
+        for i = 0, num_items - 1 do
+            local item = reaper.GetTrackMediaItem(track, i)
+
+            if track_selected then
+                -- Select items for selected track
+                reaper.SetMediaItemSelected(item, true)
+            else
+                -- Unselect items for unselected tracks
+                reaper.SetMediaItemSelected(item, false)
+            end
+        end
+    end
+end
+
 function Loop_Creator()
     first_item = reaper.GetSelectedMediaItem(0,0)
     if first_item ~= nil then
@@ -82,14 +100,8 @@ function Loop_Creator()
         length_first_item = reaper.GetMediaItemInfo_Value(first_item, "D_LENGTH")
         cut_first = (start_looptime - start_first_item)
         cut_last = (end_looptime - start_first_item)
-        length_middle = cut_last - cut_first
-        Msg("cut first = " ..cut_first)
-        Msg("cut last = " ..cut_last)
-        Msg("length middle = " ..length_middle)
-  
+        length_middle = cut_last - cut_first  
         count_sel_item =  reaper.CountSelectedMediaItems(0)
-        Msg("Selected Items = "..count_sel_item)
-    
         selected_items = {}
         for i = 0, count_sel_item - 1 do
             item = reaper.GetSelectedMediaItem(0, i)
@@ -121,8 +133,6 @@ function Loop_Creator()
                 
                 start_part4 = start_item + length_item1 + length_item2 + length_item3 - 0.25 * length_middle
                 end_part4 = start_item + length_item1 + length_item2 + length_item3 + length_item2 + length_item3 + length_item4
-                Msg("start_part4 = " ..start_part4)
-                Msg("end_part4 = " ..end_part4)
                 reaper.BR_SetItemEdges(cut_items[i+3], start_part4, end_part4)
                 start_item3 = reaper.GetMediaItemInfo_Value(cut_items[i+2], "D_POSITION")
                 reaper.AddProjectMarker2(0, true, start_item3, start_item3 + length_middle, "#LOOP", -1, 0)
@@ -138,20 +148,19 @@ function Loop_Creator()
     else 
         Msg("No Item selected")
     end
-    
-    -- Update the graphical interface
-    reaper.UpdateArrange()
 end
-
 -- Start the undo block
 reaper.Undo_BeginBlock()
 
 -- Run the functions
 reaper.ShowConsoleMsg("")
+Select_Media_On_Selected_Tracks()
 Move_items()
 Move_regions()
 Loop_Creator()
 
+-- Update the graphical interface
+reaper.UpdateArrange()
+
 -- End the undo block and allow to undo the whole script with one undo action
 reaper.Undo_EndBlock("Run script with multiple actions", -1)
-
