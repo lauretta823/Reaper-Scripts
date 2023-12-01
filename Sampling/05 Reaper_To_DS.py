@@ -16,7 +16,7 @@ def parse_filename(filename):
     round_robin = parts[3] if len(parts) > 3 else None
     return micro, note, velocity, round_robin
 
-def generate_dspreset_file(source_folder, library_name):
+def generate_dspreset_file(source_folder, destination_folder, library_name):
     decent_sampler = Element("DecentSampler", minVersion="1.0.0", title=library_name)
     groups = SubElement(decent_sampler, "groups")
     files_by_micro = {}
@@ -52,12 +52,12 @@ def generate_dspreset_file(source_folder, library_name):
                 group.set("seqMode", "random")
             for idx, (filename, velocity, round_robin) in enumerate(rr_files):
                 lo_vel, hi_vel = next((r for r in velocities_by_note[note] if r[1] == int(velocity)), (0, 127))
-                sample_file_path = os.path.relpath(os.path.join(source_folder, filename), source_folder)
+                sample_file_path = os.path.join('Sampling', filename)
                 sample = SubElement(group, "sample", path=sample_file_path, rootNote=note, loNote=note, hiNote=note, loVel=str(lo_vel), hiVel=str(hi_vel))
                 if round_robin:
                     sample.set("seqPosition", round_robin.replace('RR', ''))
 
-    dspreset_file = os.path.join(source_folder, f"{library_name}.dspreset")
+    dspreset_file = os.path.join(destination_folder, f"{library_name}.dspreset")
     tree = ElementTree(decent_sampler)
     xml_str = minidom.parseString(tostring(decent_sampler)).toprettyxml(indent="  ")
     with open(dspreset_file, "w", encoding="utf-8") as f:
@@ -65,7 +65,7 @@ def generate_dspreset_file(source_folder, library_name):
 
     # Create DSLibraryInfo XML file
     library_info = Element("DSLibraryInfo", name=library_name, productId="945455", version="1.1.0")
-    library_info_file = os.path.join(source_folder, "DSLibraryInfo.xml")
+    library_info_file = os.path.join(destination_folder, "DSLibraryInfo.xml")
     library_info_tree = ElementTree(library_info)
     xml_str = minidom.parseString(tostring(library_info)).toprettyxml(indent="  ")
     with open(library_info_file, "w", encoding="utf-8") as f:
@@ -74,8 +74,21 @@ def generate_dspreset_file(source_folder, library_name):
 if __name__ == "__main__":
     root = Tk()
     root.withdraw()
-    source_folder = filedialog.askdirectory(title="Select the folder to process")
-    if source_folder:
+    original_source_folder = filedialog.askdirectory(title="Select the folder to process")
+
+    # Create 'Sampling' folder inside the original source folder
+    sampling_folder = os.path.join(original_source_folder, 'Sampling')
+    if not os.path.exists(sampling_folder):
+        os.makedirs(sampling_folder)
+
+    # Move .wav files to the 'Sampling' folder
+    for file in os.listdir(original_source_folder):
+        if file.endswith('.wav'):
+            os.rename(os.path.join(original_source_folder, file), os.path.join(sampling_folder, file))
+
+    if original_source_folder:
         library_name = input("Enter the name of the library: ")
-        generate_dspreset_file(source_folder, library_name)
+        # Generate .dspreset and DSLibraryInfo.xml in the original source folder
+        generate_dspreset_file(sampling_folder, original_source_folder, library_name)
+
     input("Press Enter to exit...")
