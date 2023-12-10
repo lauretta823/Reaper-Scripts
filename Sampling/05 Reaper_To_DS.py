@@ -18,7 +18,7 @@ def parse_filename(filename):
 
 def generate_dspreset_file(source_folder, destination_folder, library_name):
     decent_sampler = Element("DecentSampler", minVersion="1.0.0", title=library_name)
-    ui = SubElement(decent_sampler, "ui", width="800", height="400", bgImage="Images/background.jpg")
+    ui = SubElement(decent_sampler, "ui", width="1000", height="500", bgImage="Images/background.jpg")
     tab = SubElement(ui, "tab", name="main")
     groups = SubElement(decent_sampler, "groups")
     files_by_micro = {}
@@ -30,24 +30,42 @@ def generate_dspreset_file(source_folder, destination_folder, library_name):
                 files_by_micro[micro] = []
             files_by_micro[micro].append((filename, note, velocity, round_robin))
 
-    ui_width = 800
-    y_position = 50
+    ui_width = 1000
+    y_position = 30
     knob_width = 110
 
     num_micros = len(files_by_micro)
     knob_spacing = ui_width // (num_micros + 1)
 
-    for idx, (micro, files) in enumerate(files_by_micro.items()):
-        x_position = knob_spacing * (idx + 1) - knob_width // 2
-        labeled_knob = SubElement(tab, "labeled-knob", x=str(x_position), y=str(y_position), width="110", 
-                                  textSize="16", textColor="AA000000", trackForegroundColor="CC000000", 
-                                  trackBackgroundColor="66999999", label=f"Volume {micro}", 
-                                  type="float", minValue="0.0", maxValue="1.0", value="1.0")
-
-        binding = SubElement(labeled_knob, "binding", type="amp", level="group", position=str(idx), 
-                             parameter="AMP_VOLUME", translation="linear", 
-                             translationOutputMin="0", translationOutputMax="1.0")
+    for idx, (micro, files) in enumerate(files_by_micro.items()):   
+        x_base = knob_spacing * (idx + 1) - knob_width // 2
         
+        labeled_knob = SubElement(tab, "labeled-knob", x=str(x_base), y=str(y_position), width="110", 
+                              textSize="18", textColor="AA000000", trackForegroundColor="CC000000", 
+                              trackBackgroundColor="66999999", label=f"Volume {micro}", 
+                              type="float", minValue="0.0", maxValue="1.0", value="1.0")
+        binding = SubElement(labeled_knob, "binding", type="amp", level="group", position=str(idx), 
+                         parameter="AMP_VOLUME", translation="linear", 
+                         translationOutputMin="0", translationOutputMax="1.0")
+        
+        y_adsr = y_position + 110
+        adsr_parameters = [("attack", "ENV_ATTACK"), ("decay", "ENV_DECAY"), 
+                        ("sustain", "ENV_SUSTAIN"), ("release", "ENV_RELEASE")]
+        total_adsr_width = 4 * 10 + 3 * 15
+        x_base_adjusted = x_base - total_adsr_width // 2 + knob_width // 2 
+
+        for i, (param, env_param) in enumerate(adsr_parameters):
+            x_position = x_base_adjusted + i * 25
+            label = SubElement(tab, "label", x=str(x_position), y=str(y_adsr), width="15", height="15", 
+                            text=param[0].upper(), textColor="AA000000", textSize="15")
+            control = SubElement(tab, "control", x=str(x_position), y=str(y_adsr + 20), width="15", height="80", 
+                                parameterName=param, style="linear_bar_vertical", type="float", 
+                                minValue="0.0", maxValue="1.0", value="0.5", 
+                                trackForegroundColor="CC000000", trackBackgroundColor="66999999")
+            binding = SubElement(control, "binding", type="parameter", level="group", position=str(idx), 
+                                parameter=env_param, translation="linear", 
+                                translationOutputMin="0", translationOutputMax="1.0")
+            
     for micro, files in files_by_micro.items():
         group = SubElement(groups, "group", tags=micro, silencedByTags=micro)
         rr_groups = {}
