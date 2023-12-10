@@ -12,14 +12,17 @@ def parse_filename(filename):
     parts = filename.rstrip('.wav').split('_')
     micro = parts[0]
     note = parts[1] if len(parts) > 1 else None
-    velocity = parts[2] if len(parts) > 2 else None
-    round_robin = parts[3] if len(parts) > 3 else None
+    velocity = parts[2] if len(parts) > 2 else "127"
+    round_robin = parts[3] if len(parts) > 3 else "RR1"
     return micro, note, velocity, round_robin
 
 def generate_dspreset_file(source_folder, destination_folder, library_name):
     decent_sampler = Element("DecentSampler", minVersion="1.0.0", title=library_name)
+    ui = SubElement(decent_sampler, "ui", width="800", height="400", bgImage="Images/background.jpg")
+    tab = SubElement(ui, "tab", name="main")
     groups = SubElement(decent_sampler, "groups")
     files_by_micro = {}
+
     for filename in os.listdir(source_folder):
         if filename.endswith(".wav"):
             micro, note, velocity, round_robin = parse_filename(filename)
@@ -27,6 +30,24 @@ def generate_dspreset_file(source_folder, destination_folder, library_name):
                 files_by_micro[micro] = []
             files_by_micro[micro].append((filename, note, velocity, round_robin))
 
+    ui_width = 800
+    y_position = 50
+    knob_width = 110
+
+    num_micros = len(files_by_micro)
+    knob_spacing = ui_width // (num_micros + 1)
+
+    for idx, (micro, files) in enumerate(files_by_micro.items()):
+        x_position = knob_spacing * (idx + 1) - knob_width // 2
+        labeled_knob = SubElement(tab, "labeled-knob", x=str(x_position), y=str(y_position), width="110", 
+                                  textSize="16", textColor="AA000000", trackForegroundColor="CC000000", 
+                                  trackBackgroundColor="66999999", label=f"Volume {micro}", 
+                                  type="float", minValue="0.0", maxValue="1.0", value="1.0")
+
+        binding = SubElement(labeled_knob, "binding", type="amp", level="group", position=str(idx), 
+                             parameter="AMP_VOLUME", translation="linear", 
+                             translationOutputMin="0", translationOutputMax="1.0")
+        
     for micro, files in files_by_micro.items():
         group = SubElement(groups, "group", tags=micro, silencedByTags=micro)
         rr_groups = {}
@@ -52,7 +73,7 @@ def generate_dspreset_file(source_folder, destination_folder, library_name):
                 group.set("seqMode", "random")
             for idx, (filename, velocity, round_robin) in enumerate(rr_files):
                 lo_vel, hi_vel = next((r for r in velocities_by_note[note] if r[1] == int(velocity)), (0, 127))
-                sample_file_path = os.path.join('Sampling', filename)
+                sample_file_path = os.path.join('Samples', filename)
                 sample = SubElement(group, "sample", path=sample_file_path, rootNote=note, loNote=note, hiNote=note, loVel=str(lo_vel), hiVel=str(hi_vel))
                 if round_robin:
                     sample.set("seqPosition", round_robin.replace('RR', ''))
@@ -76,19 +97,24 @@ if __name__ == "__main__":
     root.withdraw()
     original_source_folder = filedialog.askdirectory(title="Select the folder to process")
 
-    # Create 'Sampling' folder inside the original source folder
-    sampling_folder = os.path.join(original_source_folder, 'Sampling')
-    if not os.path.exists(sampling_folder):
-        os.makedirs(sampling_folder)
+    # Create 'Samples' folder inside the original source folder
+    samples_folder = os.path.join(original_source_folder, 'Samples')
+    if not os.path.exists(samples_folder):
+        os.makedirs(samples_folder)
 
-    # Move .wav files to the 'Sampling' folder
+    # Create 'Images' folder inside the original source folder
+    images_folder = os.path.join(original_source_folder, 'Images')
+    if not os.path.exists(images_folder):
+        os.makedirs(images_folder)
+
+    # Move .wav files to the 'Samples' folder
     for file in os.listdir(original_source_folder):
         if file.endswith('.wav'):
-            os.rename(os.path.join(original_source_folder, file), os.path.join(sampling_folder, file))
+            os.rename(os.path.join(original_source_folder, file), os.path.join(samples_folder, file))
 
     if original_source_folder:
         library_name = input("Enter the name of the library: ")
         # Generate .dspreset and DSLibraryInfo.xml in the original source folder
-        generate_dspreset_file(sampling_folder, original_source_folder, library_name)
+        generate_dspreset_file(samples_folder, original_source_folder, library_name)
 
     input("Press Enter to exit...")
