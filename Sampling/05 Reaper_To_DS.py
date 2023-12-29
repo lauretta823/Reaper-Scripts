@@ -1,7 +1,3 @@
-# Name: Reaper_To_DS
-# Function: Create a DecentSampler library from Reaper export samples
-# Version: 1.0
-
 import os
 from tkinter import filedialog
 from tkinter import Tk
@@ -49,20 +45,22 @@ def generate_dspreset_file(source_folder, destination_folder, library_name):
                          translationOutputMin="0", translationOutputMax="1.0")
         
         y_adsr = y_position + 110
-        adsr_parameters = [("attack", "ENV_ATTACK"), ("decay", "ENV_DECAY"), 
-                        ("sustain", "ENV_SUSTAIN"), ("release", "ENV_RELEASE")]
+        adsr_parameters = [("attack", "ENV_ATTACK", "0.0", "10.0", "6.0"), 
+                           ("decay", "ENV_DECAY", "0.0", "25.0", "0.0"), 
+                           ("sustain", "ENV_SUSTAIN", "0.0", "1.0", "0.87"), 
+                           ("release", "ENV_RELEASE", "0.0", "25.0", "15.0")]
         total_adsr_width = 4 * 10 + 3 * 15
         x_base_adjusted = x_base - total_adsr_width // 2 + knob_width // 2 
 
-        for i, (param, env_param) in enumerate(adsr_parameters):
+        for i, (param, env_param, min_val, max_val, default_val) in enumerate(adsr_parameters):
             x_position = x_base_adjusted + i * 25
             label = SubElement(tab, "label", x=str(x_position), y=str(y_adsr), width="15", height="15", 
                             text=param[0].upper(), textColor="AA000000", textSize="15")
             control = SubElement(tab, "control", x=str(x_position), y=str(y_adsr + 20), width="15", height="80", 
                                 parameterName=param, style="linear_bar_vertical", type="float", 
-                                minValue="0.0", maxValue="1.0", value="0.5", 
+                                minValue=min_val, maxValue=max_val, value=default_val, 
                                 trackForegroundColor="CC000000", trackBackgroundColor="66999999")
-            binding = SubElement(control, "binding", type="parameter", level="group", position=str(idx), 
+            binding = SubElement(control, "binding", type="amp", level="group", position=str(idx), 
                                 parameter=env_param, translation="linear", 
                                 translationOutputMin="0", translationOutputMax="1.0")
             
