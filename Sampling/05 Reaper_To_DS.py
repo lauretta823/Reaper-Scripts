@@ -1,3 +1,7 @@
+# Name: Reaper_To_DS
+# Function: Create a DecentSampler library from Reaper export samples
+# Version: 1.0
+
 import os
 from tkinter import filedialog
 from tkinter import Tk
@@ -12,9 +16,19 @@ def parse_filename(filename):
     round_robin = parts[3] if len(parts) > 3 else "RR1"
     return micro, note, velocity, round_robin
 
-def generate_dspreset_file(source_folder, destination_folder, library_name):
+def move_ir_files(source_folder, ir_folder):
+    for file in os.listdir(source_folder):
+        if file.endswith('.wav'):
+            micro, note, _, _ = parse_filename(file)
+            if note is None:
+                if not os.path.exists(ir_folder):
+                    os.makedirs(ir_folder)
+                os.rename(os.path.join(source_folder, file), os.path.join(ir_folder, file))
+
+def generate_dspreset_file(source_folder, destination_folder, library_name, ir_folder):
     decent_sampler = Element("DecentSampler", minVersion="1.0.0", title=library_name)
     ui = SubElement(decent_sampler, "ui", width="1000", height="500", bgImage="Images/background.jpg")
+    effects = SubElement(decent_sampler, "effects")
     tab = SubElement(ui, "tab", name="main")
     groups = SubElement(decent_sampler, "groups")
     files_by_micro = {}
@@ -93,7 +107,37 @@ def generate_dspreset_file(source_folder, destination_folder, library_name):
                 sample = SubElement(group, "sample", path=sample_file_path, rootNote=note, loNote=note, hiNote=note, loVel=str(lo_vel), hiVel=str(hi_vel))
                 if round_robin:
                     sample.set("seqPosition", round_robin.replace('RR', ''))
+      
+    # Load IR files
+    ir_files = [f for f in os.listdir(ir_folder) if f.endswith('.wav')]
+    if ir_files:
+        for idx, (micro, files) in enumerate(files_by_micro.items()):
+            # Set positions for the controls
+            x_position_menu = 675 + idx * 120  # Adjust as needed
+            y_position_menu = 175  # Adjust as needed
+            y_position_knob = 80  # Adjust as needed
 
+            # IR Dropdown Menu
+            ir_menu = SubElement(ui, "menu", x=str(x_position_menu), y=str(y_position_menu), 
+                                 width="110", height="30", requireSelection="true", 
+                                 placeholderText="Choose...", value=str(idx))
+            for ir_file in ir_files:
+                option = SubElement(ir_menu, "option", name=ir_file)
+                binding = SubElement(option, "binding", type="effect", level="instrument", 
+                                     position="2", parameter="FX_IR_FILE", 
+                                     translation="fixed_value", translationValue=f"IR/{ir_file}")
+
+            # IR Mix Knob
+            mix_knob = SubElement(ui, "labeled-knob", x=str(x_position_menu - 5), y=str(y_position_knob), 
+                                  width="100", height="105", textSize="16", label="", minValue="0.0", 
+                                  maxValue="0.25", value="0.05", style="custom_skin_vertical_drag", 
+                                  customSkinImage="Knob.png", customSkinNumFrames="102", 
+                                  customSkinImageOrientation="vertical", mouseDragSensitivity="100")
+            binding = SubElement(mix_knob, "binding", type="effect", level="instrument", 
+                                 position="2", parameter="FX_MIX")
+
+            # Convolution effect
+            effect = SubElement(effects, "effect", type="convolution", mix="0.5", irFile=f"IR/{ir_files[0]}")
     dspreset_file = os.path.join(destination_folder, f"{library_name}.dspreset")
     tree = ElementTree(decent_sampler)
     xml_str = minidom.parseString(tostring(decent_sampler)).toprettyxml(indent="  ")
@@ -113,24 +157,31 @@ if __name__ == "__main__":
     root.withdraw()
     original_source_folder = filedialog.askdirectory(title="Select the folder to process")
 
-    # Create 'Samples' folder inside the original source folder
+    # Create folders 'Samples', 'Images' et 'IR'
     samples_folder = os.path.join(original_source_folder, 'Samples')
+    images_folder = os.path.join(original_source_folder, 'Images')
+    ir_folder = os.path.join(original_source_folder, 'IR')
+
     if not os.path.exists(samples_folder):
         os.makedirs(samples_folder)
-
-    # Create 'Images' folder inside the original source folder
-    images_folder = os.path.join(original_source_folder, 'Images')
     if not os.path.exists(images_folder):
         os.makedirs(images_folder)
 
-    # Move .wav files to the 'Samples' folder
+    # Move files .wav in 'Samples' or 'IR'
     for file in os.listdir(original_source_folder):
         if file.endswith('.wav'):
-            os.rename(os.path.join(original_source_folder, file), os.path.join(samples_folder, file))
+            file_path = os.path.join(original_source_folder, file)
+            micro, note, _, _ = parse_filename(file)
+            if note is None:
+                if not os.path.exists(ir_folder):
+                    os.makedirs(ir_folder)
+                os.rename(file_path, os.path.join(ir_folder, file))
+            else:
+                os.rename(file_path, os.path.join(samples_folder, file))
 
     if original_source_folder:
         library_name = input("Enter the name of the library: ")
-        # Generate .dspreset and DSLibraryInfo.xml in the original source folder
-        generate_dspreset_file(samples_folder, original_source_folder, library_name)
+        # Generate .dspreset and DSLibraryInfo.xml in root folder
+        generate_dspreset_file(samples_folder, original_source_folder, library_name, ir_folder)
 
     input("Press Enter to exit...")
