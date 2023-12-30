@@ -27,7 +27,7 @@ def move_ir_files(source_folder, ir_folder):
 
 def generate_dspreset_file(source_folder, destination_folder, library_name, ir_folder):
     decent_sampler = Element("DecentSampler", minVersion="1.0.0", title=library_name)
-    ui = SubElement(decent_sampler, "ui", width="1000", height="500", bgImage="Images/background.jpg")
+    ui = SubElement(decent_sampler, "ui", width="1000", height="600", bgImage="Images/background.jpg")
     effects = SubElement(decent_sampler, "effects")
     tab = SubElement(ui, "tab", name="main")
     groups = SubElement(decent_sampler, "groups")
@@ -41,9 +41,8 @@ def generate_dspreset_file(source_folder, destination_folder, library_name, ir_f
             files_by_micro[micro].append((filename, note, velocity, round_robin))
 
     ui_width = 1000
-    y_position = 30
     knob_width = 110
-
+    y_position = 30
     num_micros = len(files_by_micro)
     knob_spacing = ui_width // (num_micros + 1)
 
@@ -51,12 +50,12 @@ def generate_dspreset_file(source_folder, destination_folder, library_name, ir_f
         x_base = knob_spacing * (idx + 1) - knob_width // 2
         
         labeled_knob = SubElement(tab, "labeled-knob", x=str(x_base), y=str(y_position), width="110", 
-                              textSize="18", textColor="AA000000", trackForegroundColor="CC000000", 
-                              trackBackgroundColor="66999999", label=f"Volume {micro}", 
-                              type="float", minValue="0.0", maxValue="1.0", value="1.0")
+                                textSize="18", textColor="AA000000", trackForegroundColor="CC000000", 
+                                trackBackgroundColor="66999999", label=f"Volume {micro}", 
+                                type="float", minValue="0.0", maxValue="1.0", value="1.0")
         binding = SubElement(labeled_knob, "binding", type="amp", level="group", position=str(idx), 
-                         parameter="AMP_VOLUME", translation="linear", 
-                         translationOutputMin="0", translationOutputMax="1.0")
+                                parameter="AMP_VOLUME", translation="linear", 
+                                translationOutputMin="0", translationOutputMax="1.0")
         
         y_adsr = y_position + 110
         adsr_parameters = [("attack", "ENV_ATTACK", "0.0", "10.0", "6.0"), 
@@ -108,41 +107,33 @@ def generate_dspreset_file(source_folder, destination_folder, library_name, ir_f
                 if round_robin:
                     sample.set("seqPosition", round_robin.replace('RR', ''))
       
-    # Load IR files
-    ir_files = [f for f in os.listdir(ir_folder) if f.endswith('.wav')]
+    ir_files = []
+    if os.path.exists(ir_folder):
+        ir_files = [f for f in os.listdir(ir_folder) if f.endswith('.wav')]
+
     if ir_files:
         for idx, (micro, files) in enumerate(files_by_micro.items()):
-            # Set positions for the controls
-            x_position_menu = 675 + idx * 120  # Adjust as needed
-            y_position_menu = 175  # Adjust as needed
-            y_position_knob = 80  # Adjust as needed
+            x_base = knob_spacing * (idx + 1) - knob_width // 2
+            y_position_menu = 250
+            y_position_knob = 280
 
             # IR Dropdown Menu
-            ir_menu = SubElement(ui, "menu", x=str(x_position_menu), y=str(y_position_menu), 
-                                 width="110", height="30", requireSelection="true", 
-                                 placeholderText="Choose...", value=str(idx))
+            ir_menu = SubElement(tab, "menu", x=str(x_base), y=str(y_position_menu),
+                                width="110", height="30", requireSelection="true",
+                                placeholderText="Choose...", value=str(idx))
             for ir_file in ir_files:
                 option = SubElement(ir_menu, "option", name=ir_file)
-                binding = SubElement(option, "binding", type="effect", level="instrument", 
-                                     position="2", parameter="FX_IR_FILE", 
-                                     translation="fixed_value", translationValue=f"IR/{ir_file}")
+                binding = SubElement(option, "binding", type="effect", level="instrument",
+                                position="1", parameter="FX_IR_FILE",
+                                translation="fixed_value", translationValue=f"IR/{ir_file}")
 
-            # IR Mix Knob
-            mix_knob = SubElement(ui, "labeled-knob", x=str(x_position_menu - 5), y=str(y_position_knob), 
-                                  width="100", height="105", textSize="16", label="", minValue="0.0", 
-                                  maxValue="0.25", value="0.05", style="custom_skin_vertical_drag", 
-                                  customSkinImage="Knob.png", customSkinNumFrames="102", 
-                                  customSkinImageOrientation="vertical", mouseDragSensitivity="100")
-            binding = SubElement(mix_knob, "binding", type="effect", level="instrument", 
-                                 position="2", parameter="FX_MIX")
-
-            # Convolution effect
-            effect = SubElement(effects, "effect", type="convolution", mix="0.5", irFile=f"IR/{ir_files[0]}")
-    dspreset_file = os.path.join(destination_folder, f"{library_name}.dspreset")
-    tree = ElementTree(decent_sampler)
-    xml_str = minidom.parseString(tostring(decent_sampler)).toprettyxml(indent="  ")
-    with open(dspreset_file, "w", encoding="utf-8") as f:
-        f.write(xml_str)
+            # Mix knob 
+            mix_knob = SubElement(tab, "labeled-knob", x=str(x_base), y=str(y_position_knob),
+                                width="110", height="105", textSize="20", textColor="AA000000",
+                                trackForegroundColor="CC000000", trackBackgroundColor="66999999",
+                                label="REV Mix", type="float", minValue="0.0", maxValue="1.0", value="0.5")
+            binding = SubElement(mix_knob, "binding", type="effect", level="instrument",
+                                position=str(idx), parameter="mix")
 
     # Create DSLibraryInfo XML file
     library_info = Element("DSLibraryInfo", name=library_name, productId="945455", version="1.1.0")
@@ -150,6 +141,13 @@ def generate_dspreset_file(source_folder, destination_folder, library_name, ir_f
     library_info_tree = ElementTree(library_info)
     xml_str = minidom.parseString(tostring(library_info)).toprettyxml(indent="  ")
     with open(library_info_file, "w", encoding="utf-8") as f:
+        f.write(xml_str)
+
+    # Write the DSPreset file
+    dspreset_file = os.path.join(destination_folder, f"{library_name}.dspreset")
+    tree = ElementTree(decent_sampler)
+    xml_str = minidom.parseString(tostring(decent_sampler)).toprettyxml(indent="  ")
+    with open(dspreset_file, "w", encoding="utf-8") as f:
         f.write(xml_str)
 
 if __name__ == "__main__":
