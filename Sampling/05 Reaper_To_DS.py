@@ -7,6 +7,8 @@ from tkinter import filedialog
 from tkinter import Tk
 from xml.etree.ElementTree import Element, SubElement, ElementTree, tostring
 from xml.dom import minidom
+import subprocess
+import platform
 
 def parse_filename(filename):
     parts = filename.rstrip('.wav').split('_')
@@ -25,6 +27,11 @@ def move_ir_files(source_folder, ir_folder):
                     os.makedirs(ir_folder)
                 os.rename(os.path.join(source_folder, file), os.path.join(ir_folder, file))
 
+def generate_effect(effects, effect_type, parameters):
+    effect = SubElement(effects, "effect", type=effect_type)
+    for param, value in parameters.items():
+        effect.set(param, value)
+        
 def generate_dspreset_file(source_folder, destination_folder, library_name, ir_folder):
     decent_sampler = Element("DecentSampler", minVersion="1.0.0", title=library_name)
     ui = SubElement(decent_sampler, "ui", width="1000", height="600", bgImage="Images/background.jpg")
@@ -115,16 +122,16 @@ def generate_dspreset_file(source_folder, destination_folder, library_name, ir_f
         for idx, (micro, files) in enumerate(files_by_micro.items()):
             x_base = knob_spacing * (idx + 1) - knob_width // 2
             y_position_menu = 250
-            y_position_knob = 280
+            y_position_knob = 290
 
             # IR Dropdown Menu
             ir_menu = SubElement(tab, "menu", x=str(x_base), y=str(y_position_menu),
                                 width="110", height="30", requireSelection="true",
-                                placeholderText="Choose...", value=str(idx))
+                                placeholderText="Choose...", value="1")
             for ir_file in ir_files:
                 option = SubElement(ir_menu, "option", name=ir_file)
                 binding = SubElement(option, "binding", type="effect", level="instrument",
-                                position="1", parameter="FX_IR_FILE",
+                                position=str(idx), parameter="FX_IR_FILE",
                                 translation="fixed_value", translationValue=f"IR/{ir_file}")
 
             # Mix knob 
@@ -133,7 +140,9 @@ def generate_dspreset_file(source_folder, destination_folder, library_name, ir_f
                                 trackForegroundColor="CC000000", trackBackgroundColor="66999999",
                                 label="REV Mix", type="float", minValue="0.0", maxValue="1.0", value="0.5")
             binding = SubElement(mix_knob, "binding", type="effect", level="instrument",
-                                position=str(idx), parameter="mix")
+                                position=str(idx), parameter="FX_MIX")
+            # Add IR effect for each micro
+            generate_effect(effects, "convolution", {"mix": "0.5", "irFile": f"IR/{ir_files[0]}"})
 
     # Create DSLibraryInfo XML file
     library_info = Element("DSLibraryInfo", name=library_name, productId="945455", version="1.1.0")
@@ -183,3 +192,11 @@ if __name__ == "__main__":
         generate_dspreset_file(samples_folder, original_source_folder, library_name, ir_folder)
 
     input("Press Enter to exit...")
+
+    # After generating the .dspreset file
+    if platform.system() == "Windows":
+        os.startfile(original_source_folder)
+    elif platform.system() == "Darwin":  # macOS
+        subprocess.Popen(["open", original_source_folder])
+    else:  # Linux and other OS
+        subprocess.Popen(["xdg-open", original_source_folder])
